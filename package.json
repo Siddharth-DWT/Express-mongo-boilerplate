@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "serve": "nodemon server.js",
-    "start": "node server.js"
+    "start": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -37,5 +37,8 @@
     "querystring": "^0.2.1",
     "redis": "^3.1.2",
     "sendmail": "^1.6.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
   }
 }

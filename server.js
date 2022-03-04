@@ -2,20 +2,14 @@ const express = require("express");
 const session = require("express-session");
 const MongoDBSession = require("connect-mongodb-session")(session);
 const bodyParser = require("body-parser");
-const bcrypt = require("bcrypt");
-const bcryptjs = require("bcryptjs");
 const mongoose = require("mongoose");
 const router = express.Router();
 const app = express();
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 const cookieParser = require("cookie-parser");
 
 const userRoutes = require("./modules/user/User.Route");
 
-const User = require("./middleware/key").user;
-const Password = require("./middleware/key").pass;
 const db = require("./middleware/key").mongoURI;
 
 mongoose
@@ -57,14 +51,25 @@ app.use(
 
 app.use("/user", userRoutes);
 
-let transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: User,
-    pass: Password,
-  },
+app.get("/", (req, res) => {
+  res.render("landing");
+});
+
+app.use("/", router);
+
+app.use((req, res, next) => {
+  const error = new Error("Not found s");
+  error.status = 404;
+  next(error);
+});
+
+app.use((error, req, res) => {
+  res.status(error.status || 500);
+  res.json({
+    error: {
+      message: error.message,
+    },
+  });
 });
 
 app.use((req, res, next) => {
@@ -76,27 +81,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
-app.get("/", (req, res) => {
-  res.render("landing");
-});
-
-app.use((req, res, next) => {
-  const error = new Error("Not found");
-  error.status = 404;
-  next(error);
-});
-
-app.use((error, req, res, next) => {
-  res.status(error.status || 500);
-  res.json({
-    error: {
-      message: error.message,
-    },
-  });
-});
-
-app.use("/", router);
 
 app.listen(process.env.PORT || 8000, () => {
   console.log(`App Started on PORT ${process.env.PORT || 8000}`);

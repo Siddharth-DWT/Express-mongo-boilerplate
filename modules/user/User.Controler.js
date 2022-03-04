@@ -2,9 +2,9 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const UserModel = require("./User.Model");
-const resetAuth = require("../../middleware/resetAuth");
+const { successResponse, errorResponse } = require("../../common/Utils");
 
-exports.Register = async (req, res, next) => {
+exports.register = async (req, res) => {
   UserModel.find({ email: req.body.email })
     .exec()
     .then((user) => {
@@ -50,7 +50,8 @@ exports.Register = async (req, res, next) => {
       }
     });
 };
-exports.list = async (req, res, next) => {
+
+exports.list = async (req, res) => {
   UserModel.find()
     .then((result) => {
       res.status(200).json({
@@ -64,7 +65,8 @@ exports.list = async (req, res, next) => {
       });
     });
 };
-exports.signup = async (req, res, next) => {
+
+exports.signup = async (req, res) => {
   UserModel.find({ email: req.body.email })
     .exec()
     .then((user) => {
@@ -109,7 +111,8 @@ exports.signup = async (req, res, next) => {
       }
     });
 };
-exports.forgotpassword = async (req, res, next) => {
+
+exports.forgotpassword = async (req, res) => {
   const { email } = req.body;
   const user = await UserModel.findOne({ email });
 
@@ -125,20 +128,11 @@ exports.forgotpassword = async (req, res, next) => {
   };
   const token = jwt.sign(payload, secret, { expiresIn: "15m" });
 
-  let info = await transporter.sendMail({
-    from: User,
-    to: "amay@discoverwebtech.com",
-    subject: "Password Reset",
-    html: `<h1>Welcome</h1><p>\
-            <h3>Hello ${user.name}</h3>\
-            If You are requested to reset your password then click on below link<br/>\
-            <a href="http://localhost:3000/changepassword/${token}">Click On This Link</a>\
-            </p>`,
-  });
   user.updateOne({ resetLink: token });
   return res.status(200).json({ success: true, message: "password reset link sent to your email account" });
 };
-exports.login = async (req, res, next) => {
+
+exports.login = async (req, res) => {
   const { email, password } = req.body;
   const user = await UserModel.findOne({ email });
   if (!user) {
@@ -174,17 +168,17 @@ exports.login = async (req, res, next) => {
       token,
     },
   });
-
   reponseHandler(res, user);
 };
-exports.changePasswordById = async (req, res, next) => {
+
+exports.changePasswordById = async (req, res) => {
   const { password, password2 } = req.body;
   if (!password || !password2 || password2 !== password) {
-    res.send("Passwords Don't Match !");
+    successResponse(res, null, "passwords do not match", 401);
   } else {
-    var salt = await bcryptjs.genSalt(12);
+    var salt = await bcrypt.genSalt(12);
     if (salt) {
-      var hash = await bcryptjs.hash(password, salt);
+      var hash = await bcrypt.hash(password, salt);
       await UserModel.findOneAndUpdate({ _id: req.params.id }, { $set: { password: hash } });
       res.status(200).json({ success: true, message: "password update sucesss" });
     } else {
@@ -192,14 +186,14 @@ exports.changePasswordById = async (req, res, next) => {
     }
   }
 };
-exports.resetPasswordById = async (req, res, next) => {
+exports.resetPasswordById = async (req, res) => {
   const { password1, password2 } = req.body;
   if (!password1 || !password2 || password2 != password1) {
     res.send("Passwords Don't Match !");
   } else {
-    var salt = await bcryptjs.genSalt(12);
+    var salt = await bcrypt.genSalt(12);
     if (salt) {
-      var hash = await bcryptjs.hash(password1, salt);
+      var hash = await bcrypt.hash(password1, salt);
       await UserModel.findOneAndUpdate({ _id: req.params.id }, { $set: { password: hash } });
       res.status(200).json({ success: true, message: "password update sucesss" });
     } else {
@@ -207,7 +201,8 @@ exports.resetPasswordById = async (req, res, next) => {
     }
   }
 };
-exports.updateById = (req, res, next) => {
+
+exports.updateById = (req, res) => {
   UserModel.findOneAndUpdate(
     { _id: req.params.id },
     {
@@ -221,7 +216,7 @@ exports.updateById = (req, res, next) => {
       },
     }
   )
-    .then((result) => {
+    .then(() => {
       res.status(200).json({
         message: "User Updated",
       });
@@ -233,7 +228,8 @@ exports.updateById = (req, res, next) => {
       });
     });
 };
-exports.getById = (req, res, next) => {
+
+exports.getById = (req, res) => {
   UserModel.findById(req.params.id)
     .then((result) => {
       if (!result) {
@@ -251,10 +247,11 @@ exports.getById = (req, res, next) => {
       });
     });
 };
-exports.deleteById = (req, res, next) => {
-  UserModel.remove({ _id: req.params.userId })
+
+exports.deleteById = (req, res) => {
+  UserModel.remove({ _id: req.params.id })
     .exec()
-    .then((result) => {
+    .then(() => {
       res.status(200).json({
         message: "User deleted",
       });
