@@ -13,9 +13,9 @@ const userRoutes = require("./modules/user/User.Route");
 const db = require("./middleware/key").mongoURI;
 
 mongoose
-  .connect(db, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true })
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log(err));
+  .connect(db, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, useFindAndModify: false })
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.log("MongoDB connection error : ", err));
 
 const store = new MongoDBSession({
   uri: db,

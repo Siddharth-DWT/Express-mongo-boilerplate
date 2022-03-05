@@ -2,52 +2,38 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const UserModel = require("./User.Model");
-const { successResponse, errorResponse } = require("../../common/Utils");
+const { successResponse, errorResponse, serverErrorResponse, capitalizeAllFirst } = require("../../common/Utils");
 
 exports.register = async (req, res) => {
-  UserModel.find({ email: req.body.email })
+  const { email, password, name, userType, gender, age, phone } = req.body;
+  // add validation of incoming data
+  // add autocapitalize to name
+  UserModel.find({ email: email })
     .exec()
     .then((user) => {
-      if (user.length >= 1) {
-        return res.status(500).json({
-          success: false,
-          message: "Mail exists",
+      user.length && errorResponse(res, null, "User already exist", 409);
+      bcrypt.hash(password, 10, (error, hash) => {
+        error && serverErrorResponse(res, error);
+        const user = new UserModel({
+          _id: new mongoose.Types.ObjectId(),
+          name: capitalizeAllFirst(name),
+          email: email,
+          userType: userType,
+          gender: gender,
+          age: age,
+          phone: phone,
+          password: hash,
         });
-      } else {
-        bcrypt.hash(req.body.password, 10, (err, hash) => {
-          if (err) {
-            return res.status(500).json({
-              error: err,
-            });
-          } else {
-            const user = new UserModel({
-              _id: new mongoose.Types.ObjectId(),
-              name: req.body.name,
-              email: req.body.email,
-              userType: req.body.userType,
-              gender: req.body.gender,
-              age: req.body.age,
-              phone: req.body.phone,
-              password: hash,
-            });
-            user
-              .save()
-              .then((result) => {
-                console.log(result);
-                res.status(200).json({
-                  success: true,
-                  message: "User created",
-                });
-              })
-              .catch((err) => {
-                console.log(err);
-                res.status(500).json({
-                  error: err,
-                });
-              });
-          }
-        });
-      }
+        user
+          .save()
+          .then((result) => {
+            successResponse(res, { user: result }, "User has been created successfully", 201);
+          })
+          .catch((err) => {
+            err.name === "ValidationError" && errorResponse(res, err, err.message, 400);
+            serverErrorResponse(res, err);
+          });
+      });
     });
 };
 
@@ -168,24 +154,29 @@ exports.login = async (req, res) => {
       token,
     },
   });
-  reponseHandler(res, user);
 };
 
 exports.changePasswordById = async (req, res) => {
   const { password, password2 } = req.body;
-  if (!password || !password2 || password2 !== password) {
-    successResponse(res, null, "passwords do not match", 401);
+  if (!password) {
+    errorResponse(res, null, "password is not given", 400);
+  }
+  if (!password2) {
+    errorResponse(res, null, "password is not given", 400);
+  }
+  if (password2 !== password) {
+    errorResponse(res, null, "passwords do not match", 400);
+  }
+  const salt = await bcrypt.genSalt(12);
+  if (salt) {
+    const hash = await bcrypt.hash(password, salt);
+    const result = await UserModel.findOneAndUpdate({ _id: req.params.id }, { $set: { password: hash } });
+    successResponse(res, result, "Password is successfully changed", 200);
   } else {
-    var salt = await bcrypt.genSalt(12);
-    if (salt) {
-      var hash = await bcrypt.hash(password, salt);
-      await UserModel.findOneAndUpdate({ _id: req.params.id }, { $set: { password: hash } });
-      res.status(200).json({ success: true, message: "password update sucesss" });
-    } else {
-      res.render("Unexpected Error Try Again");
-    }
+    errorResponse(res, null, "Unexpected error. Try again");
   }
 };
+
 exports.resetPasswordById = async (req, res) => {
   const { password1, password2 } = req.body;
   if (!password1 || !password2 || password2 != password1) {
